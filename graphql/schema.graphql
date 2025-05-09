@@ -1,0 +1,89 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+### ==== TYPES ====
+
+
+"Account of a person who utilizes this application."
+type User {
+  "Unique primary key."
+  id: ID!
+
+  "Non-unique name."
+  name: String!
+
+  "Unique email address."
+  email: String!
+
+  "When the email was verified."
+  email_verified_at: DateTime
+
+  "When the account was created."
+  created_at: DateTime!
+
+  "When the account was last updated."
+  updated_at: DateTime!
+}
+
+"Response returned on successful logout."
+type LogoutResponse {
+  status: String!
+  message: String!
+}
+
+"Response returned when refreshing a token."
+type RefreshResponse {
+  status: String!
+  token: String!
+}
+
+"Returned on successful login."
+type AuthPayload {
+  token: String!
+  token_type: String!
+  expires_in: Int!
+}
+
+### ==== INPUTS ====
+
+input CreateUserInput {
+  name: String! @rules(apply: ["required", "string", "max:255"])
+  email: String! @rules(apply: ["required", "email", "unique:users,email"])
+  password: String! @rules(apply: ["required", "min:6"])
+}
+
+input UpdateUserInput {
+  id: ID!
+  name: String
+  email: String
+  password: String
+}
+
+### ==== QUERY ROOT ====
+
+"Indicates what fields are available at the top level of a query operation."
+type Query {
+  "Lista usuários com paginação"
+  users(
+    first: Int = 15,
+    page: Int
+  ): [User!]! @paginate(model: "App\\Models\\User") @guard(with: ["api"])
+}
+
+### ==== MUTATIONS ====
+
+extend type Mutation {
+  "Create a new user (requires authentication)."
+  createUser(input: CreateUserInput!): User @field(resolver: "App\\GraphQL\\Mutations\\CreateUser@resolve")
+  updateUser(input: UpdateUserInput!): User @update
+  deleteUser(id: ID!): User @delete
+
+  "Login and receive access token."
+  login(email: String!, password: String!): AuthPayload @field(resolver: "App\\GraphQL\\Mutations\\Login")
+
+  "Logout the currently authenticated user."
+  logout: LogoutResponse @guard(with: ["api"])
+
+  "Refresh the JWT token for an authenticated user."
+  refreshToken: AuthPayload @field(resolver: "App\\GraphQL\\Mutations\\RefreshToken")
+}
